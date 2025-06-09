@@ -93,7 +93,3 @@ Works best on websites with properly structured <footer> tags.
 May miss dynamically loaded content (JavaScript-based).
 
 Respect robots.txt and site scraping policies.
-
-👨‍💻 Author
-Made with ❤️ by Flavio
-Feel free to fork, suggest features, or contribute!
