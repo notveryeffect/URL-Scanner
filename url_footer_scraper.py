@@ -9,7 +9,7 @@ import csv
 import re
 
 
-def fetch_contacts_from_footer(url):
+def fetch_contacts_from_footer(url, keywords):
     try:
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -23,7 +23,7 @@ def fetch_contacts_from_footer(url):
         filtered = []
         for t in texts:
             tl = t.lower()
-            if 'email' in tl or 'telefono' in tl:
+            if any(k in tl for k in keywords):
                 filtered.append(t)
             elif re.search(r'\b\w+@\w+\.\w+\b', t):
                 filtered.append(t)
@@ -49,12 +49,12 @@ def save_results(results, file_format):
             writer = csv.writer(f)
             writer.writerow(['URL', 'Contatti'])
             for url, data in results.items():
-                writer.writerow([url, '\n'.join(data)])
+                for d in data:
+                    writer.writerow([url, d])
     else:  # txt
         with open(file_path, 'w', encoding='utf-8') as f:
             for url, data in results.items():
                 f.write("URL: {}\nContatti:\n{}\n{}\n".format(url, '\n'.join(data), '-' * 40))
-
 
 
 def export_table():
@@ -82,6 +82,18 @@ def start_scan():
     urls = entry.get("1.0", tk.END).strip().split(',')
     urls = [u.strip() for u in urls if u.strip()]
     fmt = format_var.get()
+    keywords = keyword_entry.get().lower().split(',')
+    keywords = [k.strip() for k in keywords if k.strip()]
+
+    # Include checked keywords
+    if email_var.get():
+        keywords.append("email")
+    if phone_var.get():
+        keywords.append("telefono")
+    if whatsapp_var.get():
+        keywords.append("whatsapp")
+
+    keywords = list(set(keywords))  # remove duplicates
 
     if not urls:
         messagebox.showerror("Errore", "Inserisci almeno un URL valido.")
@@ -94,7 +106,7 @@ def start_scan():
 
     for url in urls:
         output.insert(tk.END, f"Analizzo {url}...\n")
-        result = fetch_contacts_from_footer(url)
+        result = fetch_contacts_from_footer(url, keywords)
         results[url] = result
         for r in result:
             table.insert('', 'end', values=(url, r))
@@ -107,13 +119,30 @@ def start_scan():
 # === GUI ===
 root = tk.Tk()
 root.title("Contatti Footer Scanner")
-root.geometry("800x650")
+root.geometry("800x750")
 
 label = tk.Label(root, text="Inserisci URL separati da virgola:")
 label.pack()
 
 entry = tk.Text(root, height=5)
 entry.pack(fill=tk.X, padx=10)
+
+keyword_label = tk.Label(root, text="Parole chiave da cercare (separate da virgola):")
+keyword_label.pack()
+
+keyword_entry = tk.Entry(root)
+keyword_entry.insert(0, "")
+keyword_entry.pack(fill=tk.X, padx=10)
+
+checkbox_frame = tk.Frame(root)
+email_var = tk.BooleanVar(value=True)
+phone_var = tk.BooleanVar(value=True)
+whatsapp_var = tk.BooleanVar(value=False)
+
+tk.Checkbutton(checkbox_frame, text="Email", variable=email_var).pack(side=tk.LEFT)
+tk.Checkbutton(checkbox_frame, text="Telefono", variable=phone_var).pack(side=tk.LEFT)
+tk.Checkbutton(checkbox_frame, text="Whatsapp", variable=whatsapp_var).pack(side=tk.LEFT)
+checkbox_frame.pack(pady=5)
 
 format_var = tk.StringVar(value='json')
 format_frame = tk.Frame(root)
